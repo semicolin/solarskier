@@ -10,6 +10,7 @@ var game = {
     fps: 30,
     scrollSpeed: 2,
     scrollAccel: 0.001,
+    scrollAccelReverse: -0.05,
     gameOver: false,
     init: function(canvas) {
         this.canvas = canvas;
@@ -24,14 +25,15 @@ var game = {
         this.keys = {};
         document.onkeydown = this.keydown.bind(this);
         document.onkeyup = this.keyup.bind(this);
-        setInterval(this.tick.bind(this), 1000 / this.fps);
+        this.timer = setInterval(this.tick.bind(this), 1000 / this.fps);
     },
     tick: function() {
         this.scrollSpeed += this.scrollAccel;
-        if (this.scrollPos <= 0) {
-            this.scrollPos -= this.scrollSpeed;
+        this.scrollPos -= this.scrollSpeed;
+        if (this.scrollPos > 0) { // finished reverse scroll
+            clearInterval(this.timer);
         }
-        this.context.setTransform(1,0,0,1,0,-this.scrollPos);
+        this.context.setTransform(1,0,0,1,0,-Math.floor(this.scrollPos));
         this.context.clearRect(0, this.scrollPos, this.width, this.height);
         if (!this.gameOver) {
             level.update(this.scrollPos);
@@ -41,14 +43,14 @@ var game = {
         player.clip(this.scrollPos, this.scrollPos + this.height);
         level.draw(this.context);
         player.draw(this.context);
-        score.draw(this.context, this.scrollPos);
+        this.context.setTransform(1,0,0,1,0,0);
+        score.draw(this.context);
         if (this.gameOver) {
             this.drawGameOver();
         }
         if (player.x < 0 || player.y < 0 + this.scrollPos || player.x > this.width || player.y > this.height + this.scrollPos) {
             this.gameOver = true;
-            this.scrollAccel = 0;
-            this.scrollSpeed = -3;
+            this.scrollAccel = this.scrollAccelReverse;
             score.save();
         }
     },
@@ -57,7 +59,7 @@ var game = {
         this.context.font = '64px sans-serif';
         this.context.textAlign = 'center';
         this.context.textBaseline = 'middle';
-        this.context.fillText('Game Over!', this.width/2, this.height/2 + this.scrollPos);
+        this.context.fillText('Game Over!', this.width/2, this.height/2);
     },
     keydown: function(e) {
         this.keys[e.which] = true;
@@ -74,21 +76,21 @@ var score = {
             this.best = document.cookie.split('=')[1];
         }
     },
-    draw: function(ctx, top) {
+    draw: function(ctx) {
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
         
         ctx.fillStyle = color(player.hue);
         ctx.font = '32px sans-serif';
-        ctx.fillText(this.format(this.points), game.width - 20, top + 80);
+        ctx.fillText(this.format(this.points), game.width - 20, 80);
         ctx.font = '16px sans-serif';
-        ctx.fillText('current', game.width - 20, top + 110);
+        ctx.fillText('current', game.width - 20, 110);
         
         ctx.fillStyle = color(player.hueBase - (player.hue - player.hueBase));
         ctx.font = '32px sans-serif';
-        ctx.fillText(this.format(this.best), game.width - 20, top + 20);
+        ctx.fillText(this.format(this.best), game.width - 20, 20);
         ctx.font = '16px sans-serif';
-        ctx.fillText('best', game.width - 20, top + 50);
+        ctx.fillText('best', game.width - 20, 50);
     },
     format: function(pts) {
         var string = '' + pts;
