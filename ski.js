@@ -2,23 +2,26 @@ var KEY_LEFT = 37,
     KEY_UP = 38,
     KEY_RIGHT = 39,
     KEY_DOWN = 40,
-    KEY_SPACE = 32;
+    KEY_SPACE = 32,
+    KEY_ENTER = 13;
 var LEFT = -1,
     STRAIGHT = 0,
     RIGHT = 1;
 var game = {
     fps: 60,
-    scrollSpeed: 1,
-    scrollAccel: 0.001,
+    scrollAccelForward: 0.0005,
     scrollAccelReverse: -0.05,
+    scrollSpeedMin: -12,
     gameOver: false,
-    init: function(canvas) {
-        this.canvas = canvas;
-        this.context = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight - 5;
+    init: function() {
+        this.canvas = document.getElementById('canvas');
+        this.context = this.canvas.getContext('2d');
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight - 5;
         this.width = this.canvas.width;
         this.height = this.canvas.height;
+        this.scrollSpeed = 1;
+        this.scrollAccel = this.scrollAccelForward;
         this.scrollPos = 0;
         this.gameOver = false;
         level.init(this.width, this.height);
@@ -31,6 +34,7 @@ var game = {
     },
     tick: function() {
         this.scrollSpeed += this.scrollAccel;
+        this.scrollSpeed = Math.max(this.scrollSpeed, this.scrollSpeedMin);
         this.scrollPos -= this.scrollSpeed;
         if (this.scrollPos > 0) { // finished reverse scroll
             clearInterval(this.timer);
@@ -57,23 +61,41 @@ var game = {
         }
     },
     drawGameOver: function() {
-        this.context.fillStyle = '#333366';
         this.context.font = '64px sans-serif';
         this.context.textAlign = 'center';
         this.context.textBaseline = 'middle';
-        this.context.fillText('Game Over!', this.width/2, this.height/2);
+        if (score.points === score.best && score.best > 0) {
+            this.context.fillStyle = this.context.createLinearGradient(0,this.height/2-32,0,this.height/2+32);
+            this.context.fillStyle.addColorStop(0, color(player.hueBase - player.hueShift));
+            this.context.fillStyle.addColorStop(1, color(player.hueBase + player.hueShift));
+            this.context.fillText('New High Score!', this.width/2, this.height/2);
+            this.context.fillStyle = this.context.createLinearGradient(0,this.height/2-80-32,0,this.height/2-80+32);
+            this.context.fillStyle.addColorStop(0, color(player.hueBase + player.hueShift));
+            this.context.fillStyle.addColorStop(1, color(player.hueBase - player.hueShift));
+            this.context.fillText(score.format(score.points), this.width/2, this.height/2 - 80);
+        } else {
+            this.context.fillStyle = '#333366';
+            this.context.fillText('Game Over', this.width/2, this.height/2);
+        }
+        this.context.font = '16px sans-serif';
+        this.context.fillStyle = '#333366';
+        this.context.fillText('press ENTER to restart', this.width/2, this.height/2 + 80);
     },
     keydown: function(e) {
         this.keys[e.which] = true;
+        if (this.gameOver && (this.keys[KEY_ENTER] || this.keys[KEY_SPACE])) {
+            clearInterval(this.timer);
+            this.init();
+        }
     },
     keyup: function(e) {
         this.keys[e.which] = false;
     }
 };
 var score = {
+    best: 0,
     init: function() {
         this.points = 0;
-        this.best = 0;
         if (document.cookie) {
             this.best = document.cookie.split('=')[1];
         }
@@ -127,15 +149,15 @@ var player = {
     frictionMax: 200,
     recovery: 11,
     init: function(width, height) {
-        this.x = Math.floor(width/2);
+        this.x = Math.floor(width/3);
         this.y = height - 1;
-        this.bearing = -Math.PI/2;
+        this.bearing = Math.random() * (Math.PI/3) + (4*Math.PI/3);
         this.history = [];
         this.historyMin = 0;
         this.historyMax = 0;
         this.width = this.widthBase;
         this.hue = this.hueBase;
-        this.speed = this.speedMin;
+        this.speed = 0 //this.speedMin;
         this.friction = 0;
         this.obstructed = false;
     },
@@ -221,7 +243,7 @@ var player = {
     }
 };
 var level = {
-    obstacleRateAccel: 0.005,
+    obstacleRateAccel: 0.004,
     radiusMax: 100,
     slalomDist: 50,
     init: function(width, height) {
@@ -229,7 +251,7 @@ var level = {
         this.width = width;
         this.height = height;
         this.obstacles = [];
-        for (var i=height+this.radiusMax; i>-this.radiusMax; i-=this.obstacleRate) {
+        for (var i=height-300; i>-this.radiusMax; i-=this.obstacleRate) {
             this.addObstacle(i);
         }
         this.obstacleMin = 0;
@@ -326,4 +348,4 @@ function color(hue, alpha) {
     return 'hsla(' + hue + ',100%,50%,' + (alpha||1) + ')';
 }
 
-game.init(document.getElementById('canvas'));
+game.init();
