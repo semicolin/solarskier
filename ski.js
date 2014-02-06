@@ -7,8 +7,8 @@ var LEFT = -1,
     STRAIGHT = 0,
     RIGHT = 1;
 var game = {
-    fps: 30,
-    scrollSpeed: 2,
+    fps: 60,
+    scrollSpeed: 1,
     scrollAccel: 0.001,
     scrollAccelReverse: -0.05,
     gameOver: false,
@@ -120,12 +120,12 @@ var player = {
     hueStep: 5,
     widthBase: 4,
     widthStep: 0.1,
-    speedMin: 3,
-    accel: 0.08,
-    deccel: 0.001,
-    turnRate: Math.PI/20,
+    speedMin: 1,
+    accel: 0.04,
+    deccel: 0.0005,
+    turnRate: Math.PI/36,
     frictionMax: 200,
-    recovery: 22,
+    recovery: 11,
     init: function(width, height) {
         this.x = Math.floor(width/2);
         this.y = height - 1;
@@ -199,7 +199,7 @@ var player = {
             while (this.history[this.historyMax-1].y < top - 20) {
                 this.historyMax -= 1;
             }
-            this.historyMin = Math.max(0, this.historyMax - 600);
+            this.historyMin = Math.max(0, this.historyMax - 800);
         }
         //console.log('player',this.historyMin, this.historyMax, this.history.length);
     },
