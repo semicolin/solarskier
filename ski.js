@@ -15,6 +15,8 @@ var game = {
     init: function(canvas) {
         this.canvas = canvas;
         this.context = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - 5;
         this.width = this.canvas.width;
         this.height = this.canvas.height;
         this.scrollPos = 0;
@@ -219,12 +221,11 @@ var player = {
     }
 };
 var level = {
-    obstacleRateBase: 20,
     obstacleRateAccel: 0.002,
     radiusMax: 100,
     slalomDist: 50,
     init: function(width, height) {
-        this.obstacleRate = this.obstacleRateBase;
+        this.obstacleRate = 32000 / width;
         this.width = width;
         this.height = height;
         this.obstacles = [];
