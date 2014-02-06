@@ -192,7 +192,7 @@ var player = {
         this.historyMax += 1;
     },
     clip: function(top, bottom) {
-        while (this.history[this.historyMin].y > bottom + 20) {
+        while (this.historyMin < this.history.length && this.history[this.historyMin].y > bottom + 20) {
             this.historyMin += 1;
         }
         if (game.gameOver) {
@@ -221,11 +221,11 @@ var player = {
     }
 };
 var level = {
-    obstacleRateAccel: 0.002,
+    obstacleRateAccel: 0.005,
     radiusMax: 100,
     slalomDist: 50,
     init: function(width, height) {
-        this.obstacleRate = 32000 / width;
+        this.obstacleRate = 64000 / width;
         this.width = width;
         this.height = height;
         this.obstacles = [];
