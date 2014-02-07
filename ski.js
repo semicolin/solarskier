@@ -84,7 +84,7 @@ var Game = {
         
         // DRAW
         this.level.draw(this.context);
-        this.player.draw(this.context);
+        this.player.draw(this.context, this.scrollPos + this.height);
         if (!this.tutorial) {
             this.context.setTransform(1,0,0,1,0,0);
             this.score.draw(this.context, this.gameover, this.tutorial);
@@ -292,29 +292,33 @@ var Player = {
         this.historyMax += 1;
     },
     clip: function(top, bottom, gameover) {
-        while (this.historyMin < this.history.length-1 && this.history[this.historyMin].y > bottom + 20) {
-            this.historyMin += 1;
-        }
         if (gameover) {
             while (this.historyMax > 0 && this.history[this.historyMax-1].y < top - 20) {
                 this.historyMax -= 1;
             }
             this.historyMin = Math.max(0, this.historyMax - (200+bottom-top));
+        } else {
+            while (this.historyMin < this.history.length-1 && this.history[this.historyMin].y > bottom + 20) {
+                this.historyMin += 1;
+            }
         }
         //console.log('player',this.historyMin, this.historyMax, this.history.length);
     },
-    draw: function(ctx) {
+    draw: function(ctx, bottom) {
         ctx.lineCap = 'round';
         var x = this.history[this.historyMin].x;
         var y = this.history[this.historyMin].y;
-        for (var i=this.historyMin+1; i<this.history.length; i++) {
-            var h = this.history[i];
-            ctx.lineWidth = h.w;
-            ctx.strokeStyle = h.c;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(h.x, h.y);
-            ctx.stroke();
+        var h;
+        for (var i=this.historyMin+1; i<this.historyMax; i++) {
+            h = this.history[i];
+            if (h.y < bottom) {
+                ctx.lineWidth = h.w;
+                ctx.strokeStyle = h.c;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(h.x, h.y);
+                ctx.stroke();
+            }
             x = h.x;
             y = h.y;
         }
@@ -481,22 +485,24 @@ var CircleLevel = {
         }
     },
     clip: function(top, bottom, gameover) {
-        while (this.obstacles[this.obstacleMin].y > bottom + this.radiusMax) {
-            this.obstacleMin += 1;
-        }
         if (gameover) {
             while (this.obstacleMin > 0 && this.obstacles[this.obstacleMin-1].y < bottom + this.radiusMax) {
                 this.obstacleMin -= 1;
             }
-            while (this.obstaclesMax > 0 && this.obstacles[this.obstacleMax-1].y < top - this.radiusMax) {
+            while (this.obstacleMax > 0 && this.obstacles[this.obstacleMax-1].y < top - this.radiusMax) {
                 this.obstacleMax -= 1;
+            }
+        } else {
+            while (this.obstacles[this.obstacleMin].y > bottom + this.radiusMax) {
+                this.obstacleMin += 1;
             }
         }
         //console.log('obstacles',this.obstacleMin, this.obstacleMax, this.obstacles.length);
     },
     draw: function(ctx) {
+        var o;
         for (var i=this.obstacleMin; i<this.obstacleMax; i++) {
-            var o = this.obstacles[i];
+            o = this.obstacles[i];
             if (o.s === LEFT) {
                 ctx.fillStyle = this.styleSlalomLeft;
             } else if (o.s === RIGHT) {
