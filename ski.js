@@ -21,7 +21,11 @@ var Game = {
         document.onkeydown = this.keydown.bind(this);
         document.onkeyup = this.keyup.bind(this);
         this.resize();
-        this.tutorial();
+        if (Score.loadHighscore()) {
+            this.start();
+        } else {
+            this.tutorial();
+        }
         return this;
     },
     resize: function() {
@@ -90,7 +94,7 @@ var Game = {
             this.gameover = true;
             this.scrollAccel = this.scrollAccelReverse;
             if (!this.tutorial) {
-                this.score.save();
+                this.score.saveHighscore();
             }
         }
         if (this.scrollPos > 0) {
@@ -135,9 +139,7 @@ var Score = {
         this.width = width;
         this.height = height;
         this.points = 0;
-        if (document.cookie) {
-            this.best = document.cookie.split('=')[1];
-        }
+        this.loadHighscore();
         return this;
     },
     draw: function(ctx, gameover, tutorial) {
@@ -192,13 +194,26 @@ var Score = {
     isHighscore: function() {
         return this.points === this.best && this.best > 0;
     },
-    save: function() {
+    saveHighscore: function() {
         if (this.points > this.best) {
             this.best = this.points;
             var d = new Date();
             d.setTime(d.getTime()+(365*24*60*60*1000));
-            document.cookie = 'best=' + this.best + ';expires=' + d.toGMTString();
+            document.cookie = 'solarskierhighscore=' + this.best + ';expires=' + d.toGMTString();
         }
+    },
+    loadHighscore: function() {
+        if (document.cookie) {
+            var cookies = document.cookie.split(';');
+            for (var i=0; i<cookies.length; i++) {
+                var parts = cookies[i].split('=');
+                if (parts[0] === 'solarskierhighscore') {
+                    this.best = parts[1];
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 };
 var Player = {
@@ -355,11 +370,11 @@ var TutorialLevel = {
     update: function(top) {
         if (!this.obstacles[0].s && this.player.y <= this.obstacles[0].y + this.obstacles[0].r) {
             this.obstacles[0].s = RIGHT;
-            this.score.points += this.obstacles[0].r;
+            //this.score.points += this.obstacles[0].r;
         }
         if (!this.obstacles[1].s && this.player.y <= this.obstacles[1].y + this.obstacles[1].r) {
             this.obstacles[1].s = LEFT;
-            this.score.points += this.obstacles[1].r;
+            //this.score.points += this.obstacles[1].r;
         }
     },
     clip: function(top, bottom) {
@@ -404,7 +419,8 @@ var TutorialLevel = {
 }
 
 var CircleLevel = {
-    obstacleRateAccel: 0.004,
+    obstacleRateAccel: 0.003,
+    radiusMin: 10,
     radiusMax: 100,
     slalomDist: 50,
     init: function(player, score, width, height) {
@@ -504,7 +520,7 @@ var CircleLevel = {
         this.obstacles.push({
             x: Math.floor(Math.random() * this.width),
             y: y,
-            r: Math.floor(Math.random()*this.radiusMax)
+            r: Math.floor(Math.random() * (this.radiusMax - this.radiusMin) + this.radiusMin)
         });
     }
 }
