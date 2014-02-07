@@ -1,187 +1,195 @@
+(function() {
 var KEY_LEFT = 37,
     KEY_UP = 38,
     KEY_RIGHT = 39,
     KEY_DOWN = 40,
     KEY_SPACE = 32,
-    KEY_ENTER = 13;
-
-var LEFT = -1,
+    KEY_ENTER = 13,
+    LEFT = -1,
     STRAIGHT = 0,
-    RIGHT = 1;
-
-var Game = {
-    fps: 60,
-    scrollAccelForward: 0.0005,
-    scrollAccelReverse: -0.05,
-    scrollSpeedMin: -15,
-    init: function(canvas) {
-        this.canvas = canvas;
-        this.context = this.canvas.getContext('2d');
-        this.keys = {};
-        document.onkeydown = this.keydown.bind(this);
-        document.onkeyup = this.keyup.bind(this);
-        this.resize();
+    RIGHT = 1,
+    HUE_BASE = 245,
+    HUE_SHIFT = 55;
+var color = function (hue, alpha) {
+    return 'hsla(' + hue + ',100%,50%,' + alpha + ')';
+};
+var Game = (function() {
+    var fps = 60;
+    var scrollAccelForward = 0.0005;
+    var scrollAccelReverse = -0.05;
+    var scrollSpeedMin = -15;
+    var canvas, context, timer, keys, width, height, clock, scrollPos, scrollSpeed, scrollAccel, gameover, tutorial;
+    var player, score, level;
+    var init = function(c) {
+        canvas = c;
+        context = canvas.getContext('2d');
+        keys = {};
+        document.onkeydown = keydown;
+        document.onkeyup = keyup;
+        resize();
         if (Score.loadHighscore()) {
-            this.start();
+            start();
         } else {
-            this.tutorial();
+            startTutorial();
         }
-        return this;
-    },
-    resize: function() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight - 5;
-        this.width = this.canvas.width;
-        this.height = this.canvas.height;
-    },
-    tutorial: function() {
-        this.keys = {};
-        this.clock = 0;
-        this.scrollPos = 0;
-        this.scrollSpeed = 0.2;
-        this.scrollAccel = 0;
-        this.player = Player.init(this.width, this.height);
-        this.score = Score.init(this.player, this.width, this.height);
-        this.level = TutorialLevel.init(this.player, this.score, this.width, this.height);
-        this.timer = setInterval(this.tick.bind(this), 1000 / this.fps);
-        this.gameover = false;
-        this.tutorial = true;
-    },
-    start: function() {
-        this.keys = {};
-        this.clock = 0;
-        this.scrollPos = 0;
-        this.scrollSpeed = 1;
-        this.scrollAccel = this.scrollAccelForward;
-        this.player = Player.init(this.width, this.height);
-        this.score = Score.init(this.player, this.width, this.height);
-        this.level = CircleLevel.init(this.player, this.score, this.width, this.height);
-        this.timer = setInterval(this.tick.bind(this), 1000 / this.fps);
-        this.gameover = false;
-        this.tutorial = false;
-    },
-    tick: function() {
+    };
+    var resize = function() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - 5;
+        width = canvas.width;
+        height = canvas.height;
+    };
+    var startTutorial = function() {
+        keys = {};
+        clock = 0;
+        scrollPos = 0;
+        scrollSpeed = 0.2;
+        scrollAccel = 0;
+        player = Player.init(width, height);
+        score = Score.init(player, width, height);
+        level = Level.Tutorial.init(player, score, width, height);
+        timer = setInterval(tick, 1000 / fps);
+        gameover = false;
+        tutorial = true;
+    };
+    var start = function() {
+        keys = {};
+        clock = 0;
+        scrollPos = 0;
+        scrollSpeed = 1;
+        scrollAccel = scrollAccelForward;
+        player = Player.init(width, height);
+        score = Score.init(player, width, height);
+        level = Level.Planets.init(player, score, width, height);
+        timer = setInterval(tick.bind(this), 1000 / fps);
+        gameover = false;
+        tutorial = false;
+    };
+    var tick = function() {
         // SCROLL SCREEN
-        this.clock += 1;
-        this.scrollSpeed += this.scrollAccel;
-        this.scrollSpeed = Math.max(this.scrollSpeed, this.scrollSpeedMin);
-        this.scrollPos -= this.scrollSpeed;
-        this.context.setTransform(1,0,0,1,0,-Math.floor(this.scrollPos));
-        this.context.clearRect(0, this.scrollPos, this.width, this.height);
+        clock += 1;
+        scrollSpeed += scrollAccel;
+        scrollSpeed = Math.max(scrollSpeed, scrollSpeedMin);
+        scrollPos -= scrollSpeed;
+        context.setTransform(1,0,0,1,0,-Math.floor(scrollPos));
+        context.clearRect(0, scrollPos, width, height);
         
         // UPDATE
-        if (this.tutorial) {
-            this.controlTutorial();
+        if (tutorial) {
+            controlTutorial();
         }
-        if (!this.gameover) {
-            this.level.update(this.scrollPos);
-            this.player.update(this.keys);
+        if (!gameover) {
+            level.update(scrollPos);
+            if (!player.update(keys, scrollPos)) {
+                gameover = true;
+                scrollAccel = scrollAccelReverse;
+                if (!tutorial) {
+                    score.saveHighscore();
+                }
+            }
         }
         
         // CLIP
-        this.level.clip(this.scrollPos, this.scrollPos + this.height, this.gameover);
-        this.player.clip(this.scrollPos, this.scrollPos + this.height, this.gameover);
+        level.clip(scrollPos, scrollPos + height, gameover);
+        player.clip(scrollPos, scrollPos + height, gameover);
         
         // DRAW
-        this.level.draw(this.context);
-        this.player.draw(this.context, this.scrollPos + this.height);
-        if (!this.tutorial) {
-            this.context.setTransform(1,0,0,1,0,0);
-            this.score.draw(this.context, this.gameover, this.tutorial);
+        level.draw(context);
+        player.draw(context, scrollPos + height);
+        if (!tutorial) {
+            context.setTransform(1,0,0,1,0,0);
+            score.draw(context, gameover);
         }
-        // CHANGE STATE
-        if (this.player.x < 0 || this.player.y < 0 + this.scrollPos || this.player.x > this.width || this.player.y > this.height + this.scrollPos) {
-            this.gameover = true;
-            this.scrollAccel = this.scrollAccelReverse;
-            if (!this.tutorial) {
-                this.score.saveHighscore();
-            }
-        }
-        if (this.scrollPos > 0) {
+        if (scrollPos > 0) {
             // finished reverse scroll
-            clearInterval(this.timer);
+            clearInterval(timer);
         }
-    },
-    keydown: function(e) {
-        this.keys[e.which] = true;
-        if ((this.gameover || this.tutorial) && (this.keys[KEY_ENTER] || this.keys[KEY_SPACE])) {
-            clearInterval(this.timer);
-            this.resize();
-            this.start();
+    };
+    var keydown = function(e) {
+        keys[e.which] = true;
+        if ((gameover || tutorial) && (keys[KEY_ENTER] || keys[KEY_SPACE])) {
+            clearInterval(timer);
+            resize();
+            start();
         }
-    },
-    keyup: function(e) {
-        this.keys[e.which] = false;
-    },
-    controlTutorial: function() {
-        if (this.clock < 60) {
-            this.keys[KEY_LEFT] = false;
-            this.keys[KEY_RIGHT] = false;
-        } else if (this.clock > 270) {
-            this.keys[KEY_LEFT] = false;
-            this.keys[KEY_RIGHT] = false;
-        } else if (this.clock % 60 < 10 || 50 <= this.clock % 60) {
-            this.keys[KEY_LEFT] = true;
-            this.keys[KEY_RIGHT] = false;
-        } else if (20 <= this.clock % 60 && this.clock % 60 < 40) {
-            this.keys[KEY_LEFT] = false;
-            this.keys[KEY_RIGHT] = true;
+    };
+    var keyup = function(e) {
+        keys[e.which] = false;
+    };
+    var controlTutorial = function() {
+        if (clock < 60) {
+            keys[KEY_LEFT] = false;
+            keys[KEY_RIGHT] = false;
+        } else if (clock > 270) {
+            keys[KEY_LEFT] = false;
+            keys[KEY_RIGHT] = false;
+        } else if (clock % 60 < 10 || 50 <= clock % 60) {
+            keys[KEY_LEFT] = true;
+            keys[KEY_RIGHT] = false;
+        } else if (20 <= clock % 60 && clock % 60 < 40) {
+            keys[KEY_LEFT] = false;
+            keys[KEY_RIGHT] = true;
         } else {
-            this.keys[KEY_LEFT] = false;
-            this.keys[KEY_RIGHT] = false;
+            keys[KEY_LEFT] = false;
+            keys[KEY_RIGHT] = false;
         }
-    }
-};
-var Score = {
-    best: 0,
-    init: function(player, width, height) {
-        this.player = player;
-        this.width = width;
-        this.height = height;
-        this.points = 0;
-        this.loadHighscore();
+    };
+    return {
+        init: init
+    };
+}());
+var Score = (function() {
+    var best = 0;
+    var width, height, points;
+    var player;
+    var init = function(p, w, h) {
+        player = p;
+        width = w;
+        height = h;
+        points = 0;
+        loadHighscore();
         return this;
-    },
-    draw: function(ctx, gameover, tutorial) {
+    };
+    var draw = function(ctx, gameover) {
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
         
-        ctx.fillStyle = color(this.player.hue);
+        ctx.fillStyle = color(player.getHue(), 1);
         ctx.font = '32px sans-serif';
-        ctx.fillText(this.format(this.points), this.width - 20, 80);
+        ctx.fillText(format(points), width - 20, 80);
         ctx.font = '16px sans-serif';
-        ctx.fillText('current', this.width - 20, 110);
+        ctx.fillText('current', width - 20, 110);
         
-        ctx.fillStyle = color(this.player.hueBase - (this.player.hue - this.player.hueBase));
+        ctx.fillStyle = color(HUE_BASE - (player.getHue() - HUE_BASE), 1);
         ctx.font = '32px sans-serif';
-        ctx.fillText(this.format(this.best), this.width - 20, 20);
+        ctx.fillText(format(best), width - 20, 20);
         ctx.font = '16px sans-serif';
-        ctx.fillText('best', this.width - 20, 50);
+        ctx.fillText('best', width - 20, 50);
         
         if (gameover) {
             ctx.font = '64px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            if (this.isHighscore()) {
-                ctx.fillStyle = ctx.createLinearGradient(0,this.height/2-32,0,this.height/2+32);
-                ctx.fillStyle.addColorStop(0, color(this.player.hueBase - this.player.hueShift));
-                ctx.fillStyle.addColorStop(1, color(this.player.hueBase + this.player.hueShift));
-                ctx.fillText('New High Score!', this.width/2, this.height/2);
-                ctx.fillStyle = ctx.createLinearGradient(0,this.height/2-80-32,0,this.height/2-80+32);
-                ctx.fillStyle.addColorStop(0, color(this.player.hueBase + this.player.hueShift));
-                ctx.fillStyle.addColorStop(1, color(this.player.hueBase - this.player.hueShift));
-                ctx.fillText(this.format(this.points), this.width/2, this.height/2 - 80);
+            if (isHighscore()) {
+                ctx.fillStyle = ctx.createLinearGradient(0,height/2-32,0,height/2+32);
+                ctx.fillStyle.addColorStop(0, color(HUE_BASE - HUE_SHIFT, 1));
+                ctx.fillStyle.addColorStop(1, color(HUE_BASE + HUE_SHIFT, 1));
+                ctx.fillText('New High Score!', width/2, height/2);
+                ctx.fillStyle = ctx.createLinearGradient(0,height/2-80-32,0,height/2-80+32);
+                ctx.fillStyle.addColorStop(0, color(HUE_BASE + HUE_SHIFT, 1));
+                ctx.fillStyle.addColorStop(1, color(HUE_BASE - HUE_SHIFT, 1));
+                ctx.fillText(format(points), width/2, height/2 - 80);
             } else {
                 ctx.fillStyle = '#333366';
-                ctx.fillText('Game Over', this.width/2, this.height/2);
+                ctx.fillText('Game Over', width/2, height/2);
             }
             ctx.font = '24px sans-serif';
             ctx.fillStyle = 'black';
-            ctx.fillText('press ENTER to play again', this.width/2, this.height/2 + 80);
+            ctx.fillText('press ENTER to play again', width/2, height/2 + 80);
         }
-    },
-    format: function(pts) {
-        var string = '' + pts;
+    };
+    var format = function(pts) {
+        var string = pts.toString();
         var result = '';
         for (var i=1; i<=string.length; i++) {
             result = string[string.length-i] + result
@@ -190,348 +198,383 @@ var Score = {
             }
         }
         return result;
-    },
-    isHighscore: function() {
-        return this.points === this.best && this.best > 0;
-    },
-    saveHighscore: function() {
-        if (this.points > this.best) {
-            this.best = this.points;
+    };
+    var isHighscore = function() {
+        return points === best && best > 0;
+    };
+    var saveHighscore = function() {
+        if (points > best) {
+            best = points;
             var d = new Date();
             d.setTime(d.getTime()+(365*24*60*60*1000));
-            document.cookie = 'solarskierhighscore=' + this.best + ';expires=' + d.toGMTString();
+            document.cookie = 'solarskierhighscore=' + best + ';expires=' + d.toGMTString();
         }
-    },
-    loadHighscore: function() {
+    };
+    var loadHighscore = function() {
         if (document.cookie) {
             var cookies = document.cookie.split(';');
             for (var i=0; i<cookies.length; i++) {
                 var parts = cookies[i].split('=');
                 if (parts[0] === 'solarskierhighscore') {
-                    this.best = parts[1];
+                    best = parts[1];
                     return true;
                 }
             }
         }
         return false;
-    }
-};
-var Player = {
-    hueBase: 245,
-    hueShift: 55,
-    hueStep: 5,
-    widthBase: 4,
-    widthStep: 0.1,
-    speedMin: 1,
-    accel: 0.03,
-    deccel: 0.0005,
-    turnRate: Math.PI/36,
-    frictionMax: 200,
-    recovery: 12,
-    init: function(width, height) {
-        this.x = Math.floor(width/3);
-        this.y = height - 1;
-        this.bearing = -Math.PI/2;
-        this.history = [];
-        this.historyMin = 0;
-        this.historyMax = 0;
-        this.width = this.widthBase;
-        this.hue = this.hueBase;
-        this.speed = 0 //this.speedMin;
-        this.friction = 0;
-        this.obstructed = false;
+    };
+    var addPoints = function(pts) {
+        points += pts;
+    };
+    var removePoints = function(pts) {
+        points -= pts;
+    };
+    return {
+        init: init,
+        draw: draw,
+        saveHighscore: saveHighscore,
+        loadHighscore: loadHighscore,
+        addPoints: addPoints,
+        removePoints: removePoints
+    };
+}());
+var Player = (function() {
+    var hueStep = 5;
+    var sizeBase = 4;
+    var sizeStep = 0.1;
+    var speedMin = 1;
+    var accel = 0.03;
+    var deccel = 0.0005;
+    var turnRate = Math.PI/36;
+    var frictionMax = 200;
+    var recovery = 12;
+    var width, height, x, y, bearing, turning, history, historyMin, historyMax, size, hue, speed, friction, obstructed;
+    var init = function(w, h) {
+        width = w;
+        height = h;
+        x = Math.floor(w/3);
+        y = h - 1;
+        bearing = -Math.PI/2;
+        turning = STRAIGHT;
+        history = [];
+        historyMin = 0;
+        historyMax = 0;
+        size = sizeBase;
+        hue = HUE_BASE;
+        speed = 0 //speedMin;
+        friction = 0;
+        obstructed = false;
         return this;
-    },
-    update: function(keys) {
+    };
+    var update = function(keys, top) {
         // TURN
-        if (keys[KEY_LEFT] && !this.obstructed && this.turning !== RIGHT) {
-            this.turning = LEFT;
-            this.friction += this.speed;
-            this.friction = Math.min(this.friction, this.frictionMax);
-            this.speed -= this.friction * this.deccel;
-            this.bearing = (this.bearing - this.turnRate) % (2*Math.PI);
-            if (this.hue > this.hueBase - this.hueShift) {
-                this.hue -= this.hueStep;
+        if (keys[KEY_LEFT] && !obstructed && turning !== RIGHT) {
+            turning = LEFT;
+            friction += speed;
+            friction = Math.min(friction, frictionMax);
+            speed -= friction * deccel;
+            bearing = (bearing - turnRate) % (2*Math.PI);
+            if (hue > HUE_BASE - HUE_SHIFT) {
+                hue -= hueStep;
             }
-        } else if(keys[KEY_RIGHT] && !this.obstructed && this.turning !== LEFT) {
-            this.turning = RIGHT;
-            this.friction += this.speed;
-            this.friction = Math.min(this.friction, this.frictionMax);
-            this.speed -= this.friction * this.deccel;
-            this.bearing = (this.bearing + this.turnRate) % (2*Math.PI);
-            if (this.hue < this.hueBase + this.hueShift) {
-                this.hue += this.hueStep;
+        } else if(keys[KEY_RIGHT] && !obstructed && turning !== LEFT) {
+            turning = RIGHT;
+            friction += speed;
+            friction = Math.min(friction, frictionMax);
+            speed -= friction * deccel;
+            bearing = (bearing + turnRate) % (2*Math.PI);
+            if (hue < HUE_BASE + HUE_SHIFT) {
+                hue += hueStep;
             }
         } else {
-            this.friction -= this.recovery;
-            if (this.friction <= 0) {
-                this.friction = 0;
-                this.turning = STRAIGHT;
+            friction -= recovery;
+            if (friction <= 0) {
+                friction = 0;
+                turning = STRAIGHT;
             }
-            this.speed += this.accel;
-            if (this.hue > this.hueBase) {
-                this.hue -= this.hueStep;
-            } else if (this.hue < this.hueBase) {
-                this.hue += this.hueStep;
+            speed += accel;
+            if (hue > HUE_BASE) {
+                hue -= hueStep;
+            } else if (hue < HUE_BASE) {
+                hue += hueStep;
             }
         }
-        this.alpha = 1;
-        this.alpha = this.obstructed ? 0.2 : this.alpha;
-        this.width = this.widthBase + this.widthStep * this.friction;
+        alpha = 1;
+        alpha = obstructed ? 0.2 : alpha;
+        size = sizeBase + sizeStep * friction;
         
         // MOVE
-        this.speed = Math.max(this.speed, this.speedMin);
-        this.x += this.speed * Math.cos(this.bearing);
-        this.y += this.speed * Math.sin(this.bearing);
-        this.history.push({
-            x: this.x,
-            y: this.y,
-            w: this.width,
-            c: color(this.hue, this.alpha)
+        speed = Math.max(speed, speedMin);
+        x += speed * Math.cos(bearing);
+        y += speed * Math.sin(bearing);
+        history.push({
+            x: x,
+            y: y,
+            size: size,
+            color: color(hue, alpha)
         });
-        this.historyMax += 1;
-    },
-    clip: function(top, bottom, gameover) {
+        historyMax += 1;
+        
+        // DIE
+        if (x < 0 || y < top || x > width || y > height + top) {
+            return false;
+        }
+        return true;   
+    };
+    var clip = function(top, bottom, gameover) {
         if (gameover) {
-            while (this.historyMax > 0 && this.history[this.historyMax-1].y < top - 20) {
-                this.historyMax -= 1;
+            while (historyMax > 0 && history[historyMax-1].y < top - 20) {
+                historyMax -= 1;
             }
-            this.historyMin = Math.max(0, this.historyMax - (200+bottom-top));
+            historyMin = Math.max(0, historyMax - (200+bottom-top));
         } else {
-            while (this.historyMin < this.history.length-1 && this.history[this.historyMin].y > bottom + 20) {
-                this.historyMin += 1;
+            while (historyMin < history.length-1 && history[historyMin].y > bottom + 20) {
+                historyMin += 1;
             }
         }
-        //console.log('player',this.historyMin, this.historyMax, this.history.length);
-    },
-    draw: function(ctx, bottom) {
+    };
+    var draw = function(ctx, bottom) {
         ctx.lineCap = 'round';
-        var x = this.history[this.historyMin].x;
-        var y = this.history[this.historyMin].y;
+        var x0 = history[historyMin].x;
+        var y0 = history[historyMin].y;
         var h;
-        for (var i=this.historyMin+1; i<this.historyMax; i++) {
-            h = this.history[i];
+        for (var i=historyMin+1; i<historyMax; i++) {
+            h = history[i];
             if (h.y < bottom) {
-                ctx.lineWidth = h.w;
-                ctx.strokeStyle = h.c;
+                ctx.lineWidth = h.size;
+                ctx.strokeStyle = h.color;
                 ctx.beginPath();
-                ctx.moveTo(x, y);
+                ctx.moveTo(x0, y0);
                 ctx.lineTo(h.x, h.y);
                 ctx.stroke();
             }
-            x = h.x;
-            y = h.y;
+            x0 = h.x;
+            y0 = h.y;
         }
-    }
-};
-var TutorialLevel = {
-    init: function(player, score, width, height) {
-        this.player = player;
-        this.score = score;
-        this.width = width;
-        this.height = height;
-        this.styleSlalomLeft = color(this.player.hueBase - this.player.hueShift, 0.8);
-        this.styleSlalomRight = color(this.player.hueBase + this.player.hueShift, 0.8);
-        this.obstacles = [{
-            x: this.width/3 + 10,
-            y: this.height - 450,
-            r: 27
-        },{
-            x: this.width/3 - 120,
-            y: this.height - 600,
-            r: 53
-        },{
-            x: this.width/3 - 200,
-            y: this.height - 380,
-            r: 36
-        },{
-            x: this.width/3 - 330,
-            y: this.height - 200,
-            r: 63
-        },{
-            x: this.width/3 - 100,
-            y: this.height - 250,
-            r: 16
-        },{
-            x: this.width/3 - 450,
-            y: this.height - 700,
-            r: 90
-        },{
-            x: this.width/3 + 670,
-            y: this.height - 630,
-            r: 99
-        },{
-            x: this.width/3 + 880,
-            y: this.height - 755,
-            r: 48
-        },{
-            x: this.width/3 + 600,
-            y: this.height - 1000,
-            r: 77
-        }];
-        return this;
-    },
-    update: function(top) {
-        if (!this.obstacles[0].s && this.player.y <= this.obstacles[0].y + this.obstacles[0].r) {
-            this.obstacles[0].s = RIGHT;
-            //this.score.points += this.obstacles[0].r;
-        }
-        if (!this.obstacles[1].s && this.player.y <= this.obstacles[1].y + this.obstacles[1].r) {
-            this.obstacles[1].s = LEFT;
-            //this.score.points += this.obstacles[1].r;
-        }
-    },
-    clip: function(top, bottom) {
-        this.top = top;
-        this.obstacleMin = 0;
-        this.obstacleMax = this.obstacles.length;
-    },
-    draw: function(ctx) {
-        CircleLevel.draw.call(this, ctx);
-        
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'black';
-        ctx.font = '32px sans-serif';
-
-        if (this.player.y <= this.top) {
+    };
+    return {
+        init: init,
+        update: update,
+        clip: clip,
+        draw: draw,
+        setObstructed: function(o) { obstructed = o; },
+        getHue: function() { return hue; },
+        getX: function() { return x; },
+        getY: function() { return y; },
+        getBearing: function() { return bearing; }
+    };
+}());
+var Level = (function() {
+    var styleSlalomLeft = color(HUE_BASE - HUE_SHIFT, 0.8);
+    var styleSlalomRight = color(HUE_BASE + HUE_SHIFT, 0.8);
+    var width, height, obstacles, obstacleMin, obstacleMax;
+    var player, score;
+    var Tutorial = (function() {
+        var top;
+        var init = function(p, s, w, h) {
+            player = p;
+            score = s;
+            width = w;
+            height = h;
+            obstacles = [{
+                x: width/3 + 10,
+                y: height - 450,
+                r: 27
+            },{
+                x: width/3 - 120,
+                y: height - 600,
+                r: 53
+            },{
+                x: width/3 - 200,
+                y: height - 380,
+                r: 36
+            },{
+                x: width/3 - 330,
+                y: height - 200,
+                r: 63
+            },{
+                x: width/3 - 100,
+                y: height - 250,
+                r: 16
+            },{
+                x: width/3 - 450,
+                y: height - 700,
+                r: 90
+            },{
+                x: width/3 + 670,
+                y: height - 630,
+                r: 99
+            },{
+                x: width/3 + 880,
+                y: height - 755,
+                r: 48
+            },{
+                x: width/3 + 600,
+                y: height - 1000,
+                r: 77
+            }];
+            return this;
+        };
+        var update = function(top) {
+            if (!obstacles[0].slalom && player.getY() <= obstacles[0].y + obstacles[0].r) {
+                obstacles[0].slalom = RIGHT;
+            }
+            if (!obstacles[1].slalom && player.getY() <= obstacles[1].y + obstacles[1].r) {
+                obstacles[1].slalom = LEFT;
+            }
+        };
+        var clip = function(pos) {
+            top = pos;
+            obstacleMin = 0;
+            obstacleMax = obstacles.length;
+        };
+        var draw = function(ctx) {
+            Planets.draw(ctx);
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'black';
+            ctx.font = '32px sans-serif';
+            if (player.getY() <= top) {
+                ctx.textAlign = 'left';
+                ctx.fillText('stay on screen!', width/3 + 60, top + 80);
+            }
+            if (player.getY() <= obstacles[0].y + obstacles[0].r) {
+                ctx.textAlign = 'right';
+                ctx.fillText('score points', width/3 - 70, height - 500);
+            }
+            if (player.getY() < height - 250) {
+                ctx.textAlign = 'right';
+                ctx.fillText('avoid planets', width/3 - 100, height - 300);
+            }
             ctx.textAlign = 'left';
-            ctx.fillText('stay on screen!', this.width/3 + 60, this.top + 80);
-        }
-        if (this.player.y <= this.obstacles[0].y + this.obstacles[0].r) {
-            /*
-            ctx.textAlign = 'left';
-            ctx.fillText('score points', this.width/3 + 60, this.height - 450);
-            */
-            ctx.textAlign = 'right';
-            ctx.fillText('score points', this.width/3 - 70, this.height - 500);
-
-        }
-        
-        if (this.player.y < this.height - 250) {
-            ctx.textAlign = 'right';
-            ctx.fillText('avoid planets', this.width/3 - 100, this.height - 300);
-        }
-        ctx.textAlign = 'left';
-        ctx.fillText('LEFT + RIGHT  make turns', this.width/3 + 60, this.height - 180);
-        
-        if (this.top > 0) {
-            ctx.textAlign = 'center';
-            ctx.fillText('press ENTER to play', this.width/2, this.height/2);
-        }
-        
-    }
-}
-
-var CircleLevel = {
-    obstacleRateAccel: 0.003,
-    radiusMin: 10,
-    radiusMax: 100,
-    slalomDist: 50,
-    init: function(player, score, width, height) {
-        this.player = player;
-        this.score = score;
-        this.obstacleRate = 64000 / width;
-        this.width = width;
-        this.height = height;
-        this.obstacles = [];
-        for (var i=height-300; i>-this.radiusMax; i-=this.obstacleRate) {
-            this.addObstacle(i);
-        }
-        this.obstacleMin = 0;
-        this.obstacleMax = this.obstacles.length;
-        this.styleSlalomLeft = color(this.player.hueBase - this.player.hueShift, 0.8);
-        this.styleSlalomRight = color(this.player.hueBase + this.player.hueShift, 0.8);
-        return this;
-    },
-    update: function(top) {
-        this.obstacleRate -= this.obstacleRateAccel;
-        while (true) {
-            var nextObstacle = this.obstacles[this.obstacles.length-1].y - this.obstacleRate;
-            if (nextObstacle < top - this.radiusMax) {
-                break;
-            } else {
-                this.addObstacle(nextObstacle);
-                this.obstacleMax += 1;
-            }
-        }
-        var x = this.player.x;
-        var y = this.player.y;
-        var b = (this.player.bearing + 2*Math.PI);
-        this.player.obstructed = false;
-        for (var i=this.obstacleMin; i<this.obstacleMax; i++) {
-            var o = this.obstacles[i];
-            var dx = x - o.x;
-            var dy = y - o.y;
-            var rs = o.r + this.slalomDist;
-            var sumSq = dx*dx + dy*dy;
-            if (sumSq < o.r*o.r) { // hit obstacle
-                this.player.obstructed = true;
-                o.hit = true;
-                if (o.s) {
-                    this.score.points -= o.r;
-                    o.s = false;
-                }
-            } else if (!o.hit && !o.s && sumSq < rs*rs) { // slalom obstacle
-                var a = Math.atan2(o.y - y, o.x - x);
-                var diff = (b - a + 2*Math.PI) % (2*Math.PI);
-                if (Math.PI/4 < diff && diff < 3*Math.PI/4) {
-                    o.s = LEFT;
-                    this.score.points += o.r;
-                } else if (5*Math.PI/4 < diff && diff < 7*Math.PI/4) {
-                    o.s = RIGHT;
-                    this.score.points += o.r;
-                }
-            }
-        }
-    },
-    clip: function(top, bottom, gameover) {
-        if (gameover) {
-            while (this.obstacleMin > 0 && this.obstacles[this.obstacleMin-1].y < bottom + this.radiusMax) {
-                this.obstacleMin -= 1;
-            }
-            while (this.obstacleMax > 0 && this.obstacles[this.obstacleMax-1].y < top - this.radiusMax) {
-                this.obstacleMax -= 1;
-            }
-        } else {
-            while (this.obstacles[this.obstacleMin].y > bottom + this.radiusMax) {
-                this.obstacleMin += 1;
-            }
-        }
-        //console.log('obstacles',this.obstacleMin, this.obstacleMax, this.obstacles.length);
-    },
-    draw: function(ctx) {
-        var o;
-        for (var i=this.obstacleMin; i<this.obstacleMax; i++) {
-            o = this.obstacles[i];
-            if (o.s === LEFT) {
-                ctx.fillStyle = this.styleSlalomLeft;
-            } else if (o.s === RIGHT) {
-                ctx.fillStyle = this.styleSlalomRight;
-            } else {
-                ctx.fillStyle = 'hsla(245,10%,50%,0.5)';
-            }
-            ctx.beginPath();
-            ctx.arc(o.x,o.y,o.r,0,2*Math.PI);
-            ctx.fill();
-            if (o.s) {
-                ctx.fillStyle = 'white';
-                ctx.font = Math.floor(o.r*0.8) + 'px sans-serif';
+            ctx.fillText('LEFT + RIGHT  make turns', width/3 + 60, height - 180);
+            if (top > 0) {
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(o.r, o.x, o.y);
+                ctx.fillText('press ENTER to play', width/2, height/2);
             }
-        }
-    },
-    addObstacle: function(y) {
-        this.obstacles.push({
-            x: Math.floor(Math.random() * this.width),
-            y: y,
-            r: Math.floor(Math.random() * (this.radiusMax - this.radiusMin) + this.radiusMin)
-        });
-    }
-}
-function color(hue, alpha) {
-    return 'hsla(' + hue + ',100%,50%,' + (alpha||1) + ')';
-}
-
+        };
+        return {
+            init: init,
+            update: update,
+            clip: clip,
+            draw: draw
+        };
+    }());
+    var Planets = (function() {
+        var obstacleRateAccel = 0.003;
+        var radiusMin = 10;
+        var radiusMax = 100;
+        var slalomDist = 50;
+        var obstacleRate;
+        var init = function(p, s, w, h) {
+            player = p;
+            score = s;
+            width = w;
+            height = h;
+            obstacleRate = 64000 / width;
+            obstacles = [];
+            for (var i=height-300; i>-radiusMax; i-=obstacleRate) {
+                addObstacle(i);
+            }
+            obstacleMin = 0;
+            obstacleMax = obstacles.length;
+            return this;
+        };
+        var update = function(top) {
+            obstacleRate -= obstacleRateAccel;
+            while (true) {
+                var nextObstacle = obstacles[obstacles.length-1].y - obstacleRate;
+                if (nextObstacle < top - radiusMax) {
+                    break;
+                } else {
+                    addObstacle(nextObstacle);
+                    obstacleMax += 1;
+                }
+            }
+            var x = player.getX();
+            var y = player.getY();
+            var b = (player.getBearing() + 2*Math.PI);
+            player.setObstructed(false);
+            for (var i=obstacleMin; i<obstacleMax; i++) {
+                var o = obstacles[i];
+                var dx = x - o.x;
+                var dy = y - o.y;
+                var rs = o.r + slalomDist;
+                var sumSq = dx*dx + dy*dy;
+                if (sumSq < o.r*o.r) { // hit obstacle
+                    player.setObstructed(true);
+                    o.hit = true;
+                    if (o.slalom) {
+                        score.removePoints(o.r);
+                        o.slalom = false;
+                    }
+                } else if (!o.hit && !o.slalom && sumSq < rs*rs) { // slalom obstacle
+                    var a = Math.atan2(o.y - y, o.x - x);
+                    var diff = (b - a + 2*Math.PI) % (2*Math.PI);
+                    if (Math.PI/4 < diff && diff < 3*Math.PI/4) {
+                        o.slalom = LEFT;
+                        score.addPoints(o.r);
+                    } else if (5*Math.PI/4 < diff && diff < 7*Math.PI/4) {
+                        o.slalom = RIGHT;
+                        score.addPoints(o.r);
+                    }
+                }
+            }
+        };
+        var clip = function(top, bottom, gameover) {
+            if (gameover) {
+                while (obstacleMin > 0 && obstacles[obstacleMin-1].y < bottom + radiusMax) {
+                    obstacleMin -= 1;
+                }
+                while (obstacleMax > 0 && obstacles[obstacleMax-1].y < top - radiusMax) {
+                    obstacleMax -= 1;
+                }
+            } else {
+                while (obstacles[obstacleMin].y > bottom + radiusMax) {
+                    obstacleMin += 1;
+                }
+            }
+        };
+        var draw = function(ctx) {
+            var o;
+            for (var i=obstacleMin; i<obstacleMax; i++) {
+                o = obstacles[i];
+                if (o.slalom === LEFT) {
+                    ctx.fillStyle = styleSlalomLeft;
+                } else if (o.slalom === RIGHT) {
+                    ctx.fillStyle = styleSlalomRight;
+                } else {
+                    ctx.fillStyle = 'hsla(245,10%,50%,0.5)';
+                }
+                ctx.beginPath();
+                ctx.arc(o.x,o.y,o.r,0,2*Math.PI);
+                ctx.fill();
+                if (o.slalom) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = Math.floor(o.r*0.8) + 'px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(o.r, o.x, o.y);
+                }
+            }
+        };
+        var addObstacle = function(y) {
+            obstacles.push({
+                x: Math.floor(Math.random() * width),
+                y: y,
+                r: Math.floor(Math.random() * (radiusMax - radiusMin) + radiusMin)
+            });
+        };
+        return {
+            init: init,
+            update: update,
+            clip: clip,
+            draw: draw
+        };
+    })();
+    return {
+        Tutorial: Tutorial,
+        Planets: Planets
+    };
+})();
 Game.init(document.getElementById('canvas'));
+}());
