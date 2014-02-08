@@ -1,4 +1,5 @@
 /*  SOLAR SKIER
+ *  Version 1.0
  *  Copyright Colin Stynes 2014
  *  solarskier.com
  */
