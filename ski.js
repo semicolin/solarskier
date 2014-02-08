@@ -103,7 +103,7 @@ var Game = (function() {
         canvas.addEventListener('touchstart', touchstart);
         canvas.addEventListener('touchend', touchend);
         resize();
-        setTimeout(startIntro,200);
+        setTimeout(startIntro,250);
     };
     var resize = function() {
         canvas.width = window.innerWidth;
