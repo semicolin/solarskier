@@ -131,7 +131,10 @@ var Game = (function() {
         context.fillText('Solar Skier', width/2, height/2);
         context.font = fontSizeText + 'px ' + FONT_TEXT;
         context.fillStyle = 'black';
-        context.fillText('press ENTER to play', width/2, height/2 + fontSizeTitle);
+        context.fillText('use left + right to turn', width/2, height/2 + fontSizeTitle * 0.75);
+        context.font = fontSizeText + 'px ' + FONT_TEXT;
+        context.fillStyle = 'black';
+        context.fillText('press enter to begin', width/2, height/2 + fontSizeTitle);
         
         context.fillStyle = 'hsla(245,10%,50%,0.5)';
         context.beginPath();
@@ -244,6 +247,8 @@ var Score = (function() {
         return this;
     };
     var draw = function(ctx, gameover) {
+        var fontSizeText = Math.max(16, Math.floor(width/80));
+        var fontSizeNumber = Math.max(32, Math.floor(width/40));
         if (gameover) {
             if (fade < 0.7) {
                 fade += .005;
@@ -255,32 +260,40 @@ var Score = (function() {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
         
+        var y = 20;
         ctx.fillStyle = color(player.getHue(), 1);
-        ctx.font = '32px ' + FONT_NUMBER;
-        ctx.fillText(Math.floor(10 * player.getSpeed()), 20, 20);
-        ctx.font = '16px ' + FONT_TEXT;
-        ctx.fillText('speed', 20, 50);
+        ctx.font = fontSizeNumber + 'px ' + FONT_NUMBER;
+        ctx.fillText(Math.floor(10 * player.getSpeed()), 20, y);
+        y += fontSizeNumber * 0.9;
+        ctx.font = fontSizeText + 'px ' + FONT_TEXT;
+        ctx.fillText('speed', 20, y);
         
+        y += fontSizeText + fontSizeNumber * 0.2;
         ctx.fillStyle = color(HUE_BASE - (player.getHue() - HUE_BASE), 1);
-        ctx.font = '32px ' + FONT_NUMBER;
-        ctx.fillText(Math.floor(10 * player.getAvgSpeed()), 20, 80);
-        ctx.font = '16px ' + FONT_TEXT;
-        ctx.fillText('avg', 20, 110);
+        ctx.font = fontSizeNumber + 'px ' + FONT_NUMBER;
+        ctx.fillText(Math.floor(10 * player.getAvgSpeed()), 20, y);
+        y += fontSizeNumber * 0.9;
+        ctx.font = fontSizeText + 'px ' + FONT_TEXT;
+        ctx.fillText('avg', 20, y);
 
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
         
+        var y = 20;
         ctx.fillStyle = color(HUE_BASE - (player.getHue() - HUE_BASE), 1);
-        ctx.font = '32px ' + FONT_NUMBER;
-        ctx.fillText(format(best), width - 20, 20);
-        ctx.font = '16px ' + FONT_TEXT;
-        ctx.fillText('best', width - 20, 50);
+        ctx.font = fontSizeNumber + 'px ' + FONT_NUMBER;
+        ctx.fillText(format(best), width - 20, y);
+        y += fontSizeNumber * 0.9;
+        ctx.font = fontSizeText + 'px ' + FONT_TEXT;
+        ctx.fillText('best', width - 20, y);
 
+        y += fontSizeText + fontSizeNumber * 0.2;
         ctx.fillStyle = color(player.getHue(), 1);
-        ctx.font = '32px ' + FONT_NUMBER;
-        ctx.fillText(format(points), width - 20, 80);
-        ctx.font = '16px ' + FONT_TEXT;
-        ctx.fillText('score', width - 20, 110);
+        ctx.font = fontSizeNumber + 'px ' + FONT_NUMBER;
+        ctx.fillText(format(points), width - 20, y);
+        y += fontSizeNumber * 0.9;
+        ctx.font = fontSizeText + 'px ' + FONT_TEXT;
+        ctx.fillText('score', width - 20, y);
         
         if (gameover) {
             var fontSizeTitle = Math.floor(width/15);
