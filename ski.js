@@ -1,20 +1,8 @@
-/* solarskier.com
-*/
+/*  SOLAR SKIER
+ *  Copyright Colin Stynes 2014
+ *  solarskier.com
+ */
 (function() {
-WebFontConfig = {
-    google: { families: [ 'Sonsie+One::latin', 'Cinzel+Decorative:400:latin', 'Tauri::latin', 'Alegreya+Sans+SC:400:latin' ] },
-    active: function() {
-        Game.init(document.getElementById('game'));
-    }
-};
-(function() {
-    var wf = document.createElement('script');
-    wf.src = ('https:' == document.location.protocol ? 'https' : 'http') + '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
-    wf.type = 'text/javascript';
-    wf.async = 'true';
-    var s = document.getElementsByTagName('script')[0];
-    s.parentNode.insertBefore(wf, s);
-})();
 var KEY_LEFT = 37,
     KEY_UP = 38,
     KEY_RIGHT = 39,
@@ -30,7 +18,9 @@ var KEY_LEFT = 37,
     FONT_TITLE = 'Cinzel Decorative',
     FONT_TEXT = 'Alegreya Sans SC',
     FONT_NUMBER = 'sans-serif';
-
+var color = function (hue, alpha) {
+    return 'hsla(' + hue + ',100%,50%,' + alpha + ')';
+};
 var Music = (function() {
     // NOTES
     var A5 = new Audio("sfx/5A.ogg"),
@@ -90,9 +80,6 @@ var Music = (function() {
         playNote: playNote
     };
 }());
-var color = function (hue, alpha) {
-    return 'hsla(' + hue + ',100%,50%,' + alpha + ')';
-};
 var Game = (function() {
     var fps = 60;
     var scrollAccelForward = 0.0005;
@@ -135,7 +122,7 @@ var Game = (function() {
         context.font = fontSizeText + 'px ' + FONT_TEXT;
         context.fillStyle = 'black';
         context.fillText('press enter to begin', width/2, height/2 + fontSizeTitle);
-        
+        // Dot the "i"
         context.fillStyle = 'hsla(245,10%,50%,0.5)';
         context.beginPath();
         context.arc(width * 0.677, height/2 - fontSizeTitle * 0.8, fontSizeTitle/5, 0, 2*Math.PI);
@@ -215,7 +202,7 @@ var Game = (function() {
             resize();
             start();
         } else {
-            var touchX = parseInt(e.changedTouches[0].clientX);
+            var touchX = parseInt(e.changedTouches[0].clientX, 10);
             if (touchX < width/2) {
                 keys[KEY_LEFT] = true;
             } else {
@@ -317,7 +304,7 @@ var Score = (function() {
             }
             ctx.font = fontSizeText + 'px ' + FONT_TEXT;
             ctx.fillStyle = 'black';
-            ctx.fillText('press ENTER to play again', width/2, height/2 + fontSizeTitle);
+            ctx.fillText('press enter to play again', width/2, height/2 + fontSizeTitle);
         }
     };
     var format = function(pts) {
@@ -438,8 +425,6 @@ var Player = (function() {
                 hue += hueStep;
             }
         }
-        alpha = 1;
-        alpha = obstructed ? 0.2 : alpha;
         size = sizeBase + sizeStep * friction;
         
         // MOVE
@@ -452,7 +437,7 @@ var Player = (function() {
             x: x,
             y: y,
             size: size,
-            color: color(hue, alpha)
+            color: color(hue, 1)
         });
         historyMax += 1;
         
@@ -634,5 +619,5 @@ var Level = (function() {
         Planets: Planets
     };
 })();
-
+Game.init(document.getElementById('game'));
 }());

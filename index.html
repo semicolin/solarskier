@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Solar Skier</title>
-    <link href='http://fonts.googleapis.com/css?family=Sonsie+One' rel='stylesheet' type='text/css'>
     <style>
         body {
             padding: 0;
@@ -17,10 +16,18 @@
             text-decoration: none;
         }
     </style>
+    <script src="http://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
+    <script>
+        WebFont.load({
+            google: {
+                families: ['Cinzel Decorative', 'Alegreya Sans SC']
+            }
+        });
+    </script>
 </head>
 <body>
     <a id="about" href="about.html">?</a>
     <canvas id="game"></canvas>
-    <script src="ski.js"></script>
+    <script src="ski.min.js"></script>
 </body>
 </html>
