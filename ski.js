@@ -100,7 +100,7 @@ var Game = (function() {
     var scrollAccelMinForward = -0.025;
     var scrollSpeedMinForward = 0;
     var scrollSpeedMinReverse = -15;
-    var canvas, context, timer, keys, width, height, clock, scrollPos, scrollSpeed, scrollSpeedMin, scrollAccel, intro, gameover, tutorial;
+    var canvas, context, timer, keys, width, height, clock, scrollPos, scrollSpeed, scrollSpeedMin, scrollAccel, intro, gameover;
     var player, score, level, music;
     var init = function(c) {
         canvas = c;
@@ -112,12 +112,6 @@ var Game = (function() {
         canvas.addEventListener('touchend', touchend);
         resize();
         setTimeout(startIntro,100);
-        /*
-        if (Score.loadHighscore()) {
-            start();
-        } else {
-            startTutorial();
-        }*/
     };
     var resize = function() {
         canvas.width = window.innerWidth;
@@ -138,30 +132,12 @@ var Game = (function() {
         context.font = fontSizeText + 'px ' + FONT_TEXT;
         context.fillStyle = 'black';
         context.fillText('press ENTER to play', width/2, height/2 + fontSizeTitle);
-        context.font = fontSizeText + 'px ' + FONT_TEXT;
-        context.fillStyle = 'black';
-        context.fillText('press I for instructions', width/2, height/2 + fontSizeTitle + fontSizeText*1.5);
         
         context.fillStyle = 'hsla(245,10%,50%,0.5)';
         context.beginPath();
         context.arc(width * 0.677, height/2 - fontSizeTitle * 0.8, fontSizeTitle/5, 0, 2*Math.PI);
         context.fill();
         intro = true;
-    };
-    var startTutorial = function() {
-        keys = {};
-        clock = 0;
-        scrollPos = 0;
-        scrollSpeed = 0;
-        scrollSpeedMin = 0;
-        scrollAccel = 0;
-        player = Player.init(width, height);
-        score = Score.init(player, width, height);
-        level = Level.Tutorial.init(player, score, width, height);
-        timer = setInterval(tick, 1000 / fps);
-        intro = false;
-        gameover = false;
-        tutorial = true;
     };
     var start = function() {
         keys = {};
@@ -177,12 +153,11 @@ var Game = (function() {
         timer = setInterval(tick.bind(this), 1000 / fps);
         intro = false;
         gameover = false;
-        tutorial = false;
     };
     var tick = function() {
         // SCROLL SCREEN
         clock += 1;
-        if (!gameover && !tutorial) {
+        if (!gameover) {
             var playerSpeedY = player.getSpeed() * -1 * Math.sin(player.getBearing());
             var pct = 1 - ((player.getY() - scrollPos) / height);
             pct = Math.max(0, pct * 3 - 1);
@@ -196,18 +171,13 @@ var Game = (function() {
         context.clearRect(0, scrollPos, width, height);
         
         // UPDATE
-        if (tutorial) {
-            controlTutorial();
-        }
         if (!gameover) {
             level.update(scrollPos);
             if (!player.update(keys, scrollPos)) {
                 gameover = true;
                 scrollAccel = scrollAccelReverse;
                 scrollSpeedMin = scrollSpeedMinReverse;
-                if (!tutorial) {
-                    score.saveHighscore();
-                }
+                score.saveHighscore();
             }
         }
         
@@ -218,28 +188,16 @@ var Game = (function() {
         // DRAW
         level.draw(context);
         player.draw(context, scrollPos + height);
-        if (!tutorial) {
-            context.setTransform(1,0,0,1,0,0);
-            score.draw(context, gameover);
-        }
+        context.setTransform(1,0,0,1,0,0);
+        score.draw(context, gameover);
         if (scrollPos > 0) {
-            // finished reverse scroll
+            // finished gameover reverse scroll
             clearInterval(timer);
         }
     };
     var keydown = function(e) {
         keys[e.which] = true;
-        if (intro) {
-            if (keys[KEY_ENTER]) {
-                resize();
-                start();
-            }
-            if (keys[KEY_I]) {
-                resize();
-                startTutorial();
-            }
-        }
-        if ((gameover || tutorial) && (keys[KEY_ENTER] || keys[KEY_SPACE])) {
+        if ((intro || gameover) && keys[KEY_ENTER]) {
             clearInterval(timer);
             resize();
             start();
@@ -250,7 +208,7 @@ var Game = (function() {
     };
     var touchstart = function(e) {
         e.preventDefault();
-        if (intro || gameover || tutorial) {
+        if (intro || gameover) {
             resize();
             start();
         } else {
@@ -266,24 +224,6 @@ var Game = (function() {
         e.preventDefault();
         keys[KEY_LEFT] = false;
         keys[KEY_RIGHT] = false;
-    };
-    var controlTutorial = function() {
-        if (clock < 60) {
-            keys[KEY_LEFT] = false;
-            keys[KEY_RIGHT] = false;
-        } else if (clock > 270) {
-            keys[KEY_LEFT] = false;
-            keys[KEY_RIGHT] = false;
-        } else if (clock % 60 < 10 || 50 <= clock % 60) {
-            keys[KEY_LEFT] = true;
-            keys[KEY_RIGHT] = false;
-        } else if (20 <= clock % 60 && clock % 60 < 40) {
-            keys[KEY_LEFT] = false;
-            keys[KEY_RIGHT] = true;
-        } else {
-            keys[KEY_LEFT] = false;
-            keys[KEY_RIGHT] = false;
-        }
     };
     return {
         init: init
@@ -559,109 +499,6 @@ var Level = (function() {
     var styleSlalomRight = color(HUE_BASE + HUE_SHIFT, 0.8);
     var width, height, obstacles, obstacleMin, obstacleMax;
     var player, score;
-    var Tutorial = (function() {
-        var top;
-        var init = function(p, s, w, h) {
-            player = p;
-            score = s;
-            width = w;
-            height = h;
-            obstacles = [{
-                x: width/3 + 10,
-                y: height - 450,
-                r: 27
-            },{
-                x: width/3 - 120,
-                y: height - 600,
-                r: 53
-            },{
-                x: width/3 - 200,
-                y: height - 380,
-                r: 36
-            },{
-                x: width/3 - 330,
-                y: height - 200,
-                r: 63
-            },{
-                x: width/3 - 100,
-                y: height - 250,
-                r: 16
-            },{
-                x: width/3 - 450,
-                y: height - 700,
-                r: 90
-            },{
-                x: width/3 + 670,
-                y: height - 630,
-                r: 99
-            },{
-                x: width/3 + 880,
-                y: height - 755,
-                r: 48
-            },{
-                x: width/3 + 600,
-                y: height - 1000,
-                r: 77
-            }];
-            return this;
-        };
-        var update = function(top) {
-            if (!obstacles[0].slalom && player.getY() <= obstacles[0].y + obstacles[0].r) {
-                obstacles[0].slalom = RIGHT;
-            }
-            if (!obstacles[1].slalom && player.getY() <= obstacles[1].y + obstacles[1].r) {
-                obstacles[1].slalom = LEFT;
-            }
-        };
-        var clip = function(pos) {
-            top = pos;
-            obstacleMin = 0;
-            obstacleMax = obstacles.length;
-        };
-        var draw = function(ctx) {
-            var y = player.getY();
-            Planets.draw(ctx);
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = 'black';
-            ctx.font = '32px ' + FONT_TEXT;
-            if (y <= top) {
-                ctx.textAlign = 'left';
-                ctx.fillText('stay on screen!', width/3 + 60, top + 80);
-            }
-            if (y <= obstacles[0].y + obstacles[0].r) {
-                ctx.textAlign = 'right';
-                ctx.fillText('score points', width/3 - 70, height - 500);
-            }
-            if (y < height - 250) {
-                ctx.textAlign = 'right';
-                ctx.fillText('avoid planets', width/3 - 100, height - 300);
-            }
-            ctx.textAlign = 'left';
-            ctx.fillText('LEFT + RIGHT  make turns', width/3 + 60, height - 180);
-            if (top > 0) {
-                ctx.font = '32px ' + FONT_TEXT;
-                ctx.fillStyle = 'black';
-                ctx.textAlign = 'center';
-                ctx.fillText('press ENTER to play', width/2, height/2);
-            }
-            
-            var fontSize = width/10;
-            ctx.font =  fontSize + 'px ' + FONT_TITLE;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = ctx.createLinearGradient(0, height/2 - fontSize/2, 0, height/2 + fontSize/2);
-            ctx.fillStyle.addColorStop(0, color(HUE_BASE - HUE_SHIFT, 1));
-            ctx.fillStyle.addColorStop(1, color(HUE_BASE + HUE_SHIFT, 1));
-            ctx.fillText('Solar Skier', width/2, y - height/2);
-
-        };
-        return {
-            init: init,
-            update: update,
-            clip: clip,
-            draw: draw
-        };
-    }());
     var Planets = (function() {
         var obstacleRateAccel = 0.003;
         var radiusMin = 10;
@@ -781,7 +618,6 @@ var Level = (function() {
         };
     })();
     return {
-        Tutorial: Tutorial,
         Planets: Planets
     };
 })();
