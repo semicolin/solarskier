@@ -4,12 +4,9 @@
  */
 (function() {
 var KEY_LEFT = 37,
-    KEY_UP = 38,
     KEY_RIGHT = 39,
-    KEY_DOWN = 40,
-    KEY_SPACE = 32,
     KEY_ENTER = 13,
-    KEY_I = 73,
+    KEY_S = 83,
     LEFT = -1,
     STRAIGHT = 0,
     RIGHT = 1,
@@ -57,6 +54,7 @@ var Music = (function() {
     // TUNE (chords to play and number of notes per chord)
     var progression = [C,G,C,F,G,Am,G];
     var timing =      [8,8,4,8,4,8 ,8];
+    var enabled = true;
     var index, counter;
     var init = function() {
         index = 0;
@@ -69,15 +67,21 @@ var Music = (function() {
             counter = 0;
             index = (index + 1 ) % progression.length;
         }
-        var chord = progression[index];
-        var note = Math.floor(chord.length * size / 100);
-        var sound = chord[note];
-        sound.currentTime = 0;
-        sound.play();
+        if (enabled) {
+            var chord = progression[index];
+            var note = Math.floor(chord.length * size / 100);
+            var sound = chord[note];
+            sound.currentTime = 0;
+            sound.play();
+        }
+    };
+    toggle = function() {
+        enabled = !enabled;
     };
     return {
         init: init,
-        playNote: playNote
+        playNote: playNote,
+        toggle: toggle
     };
 }());
 var Game = (function() {
@@ -98,7 +102,7 @@ var Game = (function() {
         canvas.addEventListener('touchstart', touchstart);
         canvas.addEventListener('touchend', touchend);
         resize();
-        setTimeout(startIntro,100);
+        setTimeout(startIntro,200);
     };
     var resize = function() {
         canvas.width = window.innerWidth;
@@ -112,21 +116,26 @@ var Game = (function() {
         context.font = fontSizeTitle + 'px ' + FONT_TITLE;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
+        context.fillStyle = 'white';
+        context.fillText('Solar Skier', width/2, height/2);
         context.fillStyle = context.createLinearGradient(0, height/2 - fontSizeTitle/2, 0, height/2 + fontSizeTitle/2);
         context.fillStyle.addColorStop(0, color(HUE_BASE - HUE_SHIFT, 1));
         context.fillStyle.addColorStop(1, color(HUE_BASE + HUE_SHIFT, 1));
         context.fillText('Solar Skier', width/2, height/2);
         context.font = fontSizeText + 'px ' + FONT_TEXT;
         context.fillStyle = 'black';
-        context.fillText('use left + right to turn', width/2, height/2 + fontSizeTitle * 0.75);
-        context.font = fontSizeText + 'px ' + FONT_TEXT;
-        context.fillStyle = 'black';
-        context.fillText('press enter to begin', width/2, height/2 + fontSizeTitle);
+        context.fillText('left + right to turn', width/2, height/2 + fontSizeTitle * 0.75);
+        context.fillText('press enter to begin', width/2, height/2 + fontSizeTitle * 0.75 + fontSizeText);
         // Dot the "i"
         context.fillStyle = 'hsla(245,10%,50%,0.5)';
         context.beginPath();
         context.arc(width * 0.677, height/2 - fontSizeTitle * 0.8, fontSizeTitle/5, 0, 2*Math.PI);
         context.fill();
+        context.textAlign = 'left';
+        context.textBaseline = 'bottom';
+        context.fillStyle = 'gray';
+        context.font = fontSizeText + 'px ' + FONT_TEXT;
+        context.fillText('s: toggle sound', 10, height-10);
         intro = true;
     };
     var start = function() {
@@ -191,6 +200,9 @@ var Game = (function() {
             clearInterval(timer);
             resize();
             start();
+        }
+        if (keys[KEY_S]) {
+            music.toggle();
         }
     };
     var keyup = function(e) {
