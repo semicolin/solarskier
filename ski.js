@@ -1,5 +1,5 @@
 /*  SOLAR SKIER
- *  Version 1.0
+ *  Version 1.1
  *  Copyright Colin Stynes 2014
  *  solarskier.com
  */
@@ -8,6 +8,7 @@ var KEY_LEFT = 37,
     KEY_RIGHT = 39,
     KEY_ENTER = 13,
     KEY_S = 83,
+    KEY_T = 84,
     LEFT = -1,
     STRAIGHT = 0,
     RIGHT = 1,
@@ -47,16 +48,38 @@ var Music = (function() {
         Bb3= new Audio("sfx/3Bb.ogg"),
         A3 = new Audio("sfx/3A.ogg");
     // CHORDS (arrange notes high-to-low)
-    var C = [G5,E5,C5,G4,E4,C4],
-        F = [A5,F5,C5,A4,F4,C4],
+    var E = [Ab5,E5,B4,Ab4,E4,B3],
+        A = [A5,E5,Db5,A4,E4,Db4],
+        D = [A5,Gb5,D5,A4,Gb4,D4],
         G = [G5,D5,B4,G4,D4,B3],
+        C = [G5,E5,C5,G4,E4,C4],
+        F = [A5,F5,C5,A4,F4,C4],
+        Bb= [F5,D5,Bb4,F4,D4,Bb3],
+        Eb= [G5,Eb5,Bb4,G4,Eb4,Bb3],
+        Ab= [Ab5,Eb5,C5,Ab4,Eb4,C4],
+        Db= [Ab5,F5,Db5,Ab4,F4,Db4],
+        Gb= [Gb5,Db5,Bb4,Gb4,Db4,Bb3],
         Am= [E5,C5,A4,E4,C4,A3],
-        Em= [G4,E5,B4,G4,E4,B3];
+        Em= [G4,E5,B4,G4,E4,B3],
+        Dm= [A5,F5,D5,A4,F4,D4];
     // TUNE (chords to play and number of notes per chord)
-    var progression = [C,G,C,F,G,Am,G];
-    var timing =      [8,8,4,8,4,8 ,8];
+    var tunes = [{
+        name: 'First Song',
+        progression: [C,G,C,F,G,Am,G],
+        timing:      [8,8,4,8,4,8 ,8]
+    },{
+        name: 'Rising Fifths',
+        progression: [E,A,D,G,C,F,Bb,Eb,Ab,Db,Gb],
+        timing:      [6,6,6,6,6,6, 6, 6, 6, 6, 6]
+    },{
+        name: 'Minor Setback',
+        progression: [Am,Dm,Am,Em,Am],
+        timing:      [8, 8, 8, 4, 4 ]
+    }];
+    var displayTime = 120;
     var enabled = true;
-    var index, counter;
+    var tune = 0;
+    var tune, index, counter, displayFade;
     var init = function() {
         index = 0;
         counter = 0;
@@ -64,12 +87,12 @@ var Music = (function() {
     };
     var playNote = function(size) {
         counter += 1;
-        if (counter > timing[index]) {
+        if (counter > tunes[tune].timing[index]) {
             counter = 0;
-            index = (index + 1 ) % progression.length;
+            index = (index + 1) % tunes[tune].progression.length;
         }
         if (enabled) {
-            var chord = progression[index];
+            var chord = tunes[tune].progression[index];
             var note = Math.floor(chord.length * size / 100);
             var sound = chord[note];
             sound.currentTime = 0;
@@ -79,10 +102,28 @@ var Music = (function() {
     toggle = function() {
         enabled = !enabled;
     };
+    changeTune = function() {
+        tune = (tune + 1) % tunes.length;
+        index = 0;
+        counter = 0;
+        displayFade = displayTime;
+    };
+    draw = function(ctx, width, height) {
+        if (displayFade > 0) {
+            displayFade -= 1;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = 'gray';
+            ctx.font = Math.floor(width/40) + 'px ' + FONT_TEXT;
+            ctx.fillText(tunes[tune].name, width/2, height-10);
+        }
+    };
     return {
         init: init,
         playNote: playNote,
-        toggle: toggle
+        toggle: toggle,
+        changeTune: changeTune,
+        draw: draw
     };
 }());
 var Game = (function() {
@@ -132,11 +173,13 @@ var Game = (function() {
         context.beginPath();
         context.arc(width * 0.677, height/2 - fontSizeTitle * 0.8, fontSizeTitle/5, 0, 2*Math.PI);
         context.fill();
-        context.textAlign = 'left';
+        // Sound options
         context.textBaseline = 'bottom';
         context.fillStyle = 'gray';
         context.font = fontSizeText + 'px ' + FONT_TEXT;
-        context.fillText('s: toggle sound', 10, height-10);
+        context.textAlign = 'left';
+        context.fillText('t: change tune', 10, height-10-fontSizeText);
+        context.fillText('s: mute sound', 10, height-10);
         intro = true;
     };
     var start = function() {
@@ -189,6 +232,7 @@ var Game = (function() {
         level.draw(context);
         player.draw(context, scrollPos + height);
         context.setTransform(1,0,0,1,0,0);
+        music.draw(context, width, height);
         score.draw(context, gameover);
         if (scrollPos > 0) {
             // finished gameover reverse scroll
@@ -204,6 +248,9 @@ var Game = (function() {
         }
         if (keys[KEY_S]) {
             music.toggle();
+        }
+        if (keys[KEY_T]) {
+            music.changeTune();
         }
     };
     var keyup = function(e) {
