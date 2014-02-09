@@ -133,7 +133,7 @@ var Game = (function() {
     var scrollAccelMinForward = -0.025;
     var scrollSpeedMinForward = 0;
     var scrollSpeedMinReverse = -15;
-    var canvas, context, timer, keys, width, height, clock, scrollPos, scrollSpeed, scrollSpeedMin, scrollAccel, intro, gameover;
+    var canvas, context, timer, keys, width, height, clock, scrollPos, scrollSpeed, scrollSpeedMin, scrollAccel, intro, gameover, prevFrame, frameSkipped;
     var player, score, level, music;
     var init = function(c) {
         canvas = c;
@@ -193,12 +193,14 @@ var Game = (function() {
         player = Player.init(width, height);
         score = Score.init(player, music, width, height);
         level = Level.Planets.init(player, score, width, height);
-        timer = setInterval(tick.bind(this), 1000 / fps);
+        prevFrame = new Date().getTime();
+        frameSkipped = false;
+        timer = setInterval(tick, 1000 / fps);
         intro = false;
         gameover = false;
     };
     var tick = function() {
-        // SCROLL SCREEN
+        // MOVE SCREEN
         clock += 1;
         if (!gameover) {
             var playerSpeedY = player.getSpeed() * -1 * Math.sin(player.getBearing());
@@ -210,8 +212,6 @@ var Game = (function() {
         scrollSpeed += scrollAccel;
         scrollSpeed = Math.max(scrollSpeed, scrollSpeedMin);
         scrollPos -= scrollSpeed;
-        context.setTransform(1,0,0,1,0,-Math.floor(scrollPos));
-        context.clearRect(0, scrollPos, width, height);
         
         // UPDATE
         if (!gameover) {
@@ -228,15 +228,25 @@ var Game = (function() {
         level.clip(scrollPos, scrollPos + height, gameover);
         player.clip(scrollPos, scrollPos + height, gameover);
         
-        // DRAW
-        level.draw(context);
-        player.draw(context, scrollPos + height);
-        context.setTransform(1,0,0,1,0,0);
-        music.draw(context, width, height);
-        score.draw(context, gameover);
-        if (scrollPos > 0) {
-            // finished gameover reverse scroll
-            clearInterval(timer);
+        var now = new Date().getTime();
+        var dt = now - prevFrame;
+        prevFrame = now;
+        if (frameSkipped || dt <= Math.ceil(1000/fps)) {
+            // SCROLL
+            context.setTransform(1,0,0,1,0,-Math.floor(scrollPos));
+            context.clearRect(0, scrollPos, width, height);
+            // DRAW
+            level.draw(context);
+            player.draw(context, scrollPos + height);
+            context.setTransform(1,0,0,1,0,0);
+            music.draw(context, width, height);
+            score.draw(context, gameover);
+            if (scrollPos > 0) {
+                // finished gameover reverse scroll
+                clearInterval(timer);
+            }
+        } else {
+            frameSkipped = true;
         }
     };
     var keydown = function(e) {
