@@ -1,9 +1,9 @@
 /*  SOLAR SKIER
- *  Version 1.1
+ *  Version 1.2
  *  Copyright Colin Stynes 2014
  *  solarskier.com
  */
-(function() {
+var Ski = function() {
 var KEY_LEFT = 37,
     KEY_RIGHT = 39,
     KEY_ENTER = 13,
@@ -125,7 +125,7 @@ var Music = (function() {
         changeTune: changeTune,
         draw: draw
     };
-}());
+})();
 var Game = (function() {
     var fps = 60;
     var scrollAccelForward = 0.0005;
@@ -144,7 +144,7 @@ var Game = (function() {
         canvas.addEventListener('touchstart', touchstart);
         canvas.addEventListener('touchend', touchend);
         resize();
-        setTimeout(startIntro,250);
+        startIntro();
     };
     var resize = function() {
         canvas.width = window.innerWidth;
@@ -158,8 +158,6 @@ var Game = (function() {
         context.font = fontSizeTitle + 'px ' + FONT_TITLE;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillStyle = 'white';
-        context.fillText('Solar Skier', width/2, height/2);
         context.fillStyle = context.createLinearGradient(0, height/2 - fontSizeTitle/2, 0, height/2 + fontSizeTitle/2);
         context.fillStyle.addColorStop(0, color(HUE_BASE - HUE_SHIFT, 1));
         context.fillStyle.addColorStop(1, color(HUE_BASE + HUE_SHIFT, 1));
@@ -278,7 +276,7 @@ var Game = (function() {
     return {
         init: init
     };
-}());
+})();
 var Score = (function() {
     var best = 0;
     var width, height, points, fade;
@@ -422,7 +420,7 @@ var Score = (function() {
         addPoints: addPoints,
         removePoints: removePoints
     };
-}());
+})();
 var Player = (function() {
     var hueStep = 5;
     var sizeBase = 4;
@@ -551,7 +549,7 @@ var Player = (function() {
         getSpeed: function() { return speed; },
         getAvgSpeed: function() { return speedAvg; }
     };
-}());
+})();
 var Level = (function() {
     var styleSlalomLeft = color(HUE_BASE - HUE_SHIFT, 0.8);
     var styleSlalomRight = color(HUE_BASE + HUE_SHIFT, 0.8);
@@ -680,4 +678,4 @@ var Level = (function() {
     };
 })();
 Game.init(document.getElementById('game'));
-}());
+};

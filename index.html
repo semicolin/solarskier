@@ -3,6 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <title>Solar Skier</title>
+    <script src="ski.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
+    <script>
+        WebFontConfig = {
+            google: {
+                families: ['Cinzel Decorative', 'Alegreya Sans SC'],
+            },
+            active: Ski // start the game after fonts are loaded
+        };
+        (function() {
+            var wf = document.createElement('script');
+            wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+                      '://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js';
+            wf.type = 'text/javascript';
+            wf.async = 'true';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(wf, s);
+        })();
+    </script>
     <style>
         body {
             padding: 0;
@@ -17,18 +36,9 @@
             text-decoration: none;
         }
     </style>
-    <script src="http://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js"></script>
-    <script>
-        WebFont.load({
-            google: {
-                families: ['Cinzel Decorative', 'Alegreya Sans SC']
-            }
-        });
-    </script>
 </head>
 <body>
     <a id="about" href="about.html">?</a>
     <canvas id="game"></canvas>
-    <script src="ski.min.js"></script>
 </body>
 </html>
