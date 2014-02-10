@@ -245,9 +245,11 @@ var Game = (function() {
                 // finished gameover reverse scroll
                 clearInterval(timer);
             }
+            frameSkipped = false;
         } else {
             frameSkipped = true;
         }
+        //console.log(dt, frameSkipped);
     };
     var keydown = function(e) {
         keys[e.which] = true;
