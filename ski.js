@@ -61,7 +61,8 @@ var Music = (function() {
         Gb= [Gb5,Db5,Bb4,Gb4,Db4,Bb3],
         Am= [E5,C5,A4,E4,C4,A3],
         Em= [G4,E5,B4,G4,E4,B3],
-        Dm= [A5,F5,D5,A4,F4,D4];
+        Dm= [A5,F5,D5,A4,F4,D4],
+        C7= [G5,E5,C5,Bb4,G4,E4,C4];
     // TUNE (chords to play and number of notes per chord)
     var tunes = [{
         name: 'First Song',
@@ -70,11 +71,15 @@ var Music = (function() {
     },{
         name: 'Rising Fifths',
         progression: [E,A,D,G,C,F,Bb,Eb,Ab,Db,Gb],
-        timing:      [6,6,6,6,6,6, 6, 6, 6, 6, 6]
+        timing:      [6]
     },{
         name: 'Minor Setback',
         progression: [Am,Dm,Am,Em,Am],
         timing:      [8, 8, 8, 4, 4 ]
+    },{
+        name: 'Redemption',
+        progression: [[G4],[A4],[B4],[G4],[C5],[E5],[D5],[B4],[G4],[A4],[B4],[D5],[B4],[C5],[B4],[A4],[G4]],
+        timing:      [1]
     }];
     var displayTime = 120;
     var enabled = true;
@@ -86,11 +91,11 @@ var Music = (function() {
         return this;
     };
     var playNote = function(size) {
-        counter += 1;
-        if (counter > tunes[tune].timing[index]) {
+        if (counter >= tunes[tune].timing[index % tunes[tune].timing.length]) {
             counter = 0;
             index = (index + 1) % tunes[tune].progression.length;
         }
+        counter += 1;
         if (enabled) {
             var chord = tunes[tune].progression[index];
             var note = Math.floor(chord.length * size / 100);
