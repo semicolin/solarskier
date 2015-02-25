@@ -1,5 +1,5 @@
 /*  SOLAR SKIER
- *  Version 1.2
+ *  Version 1.3
  *  Copyright Colin Stynes 2014
  *  solarskier.com
  */
@@ -219,7 +219,7 @@ var Game = (function() {
         // UPDATE
         if (!gameover) {
             level.update(scrollPos);
-            if (!player.update(keys, scrollPos)) {
+            if (!player.update(keys, scrollPos, scrollSpeed)) {
                 gameover = true;
                 scrollAccel = scrollAccelReverse;
                 scrollSpeedMin = scrollSpeedMinReverse;
@@ -321,10 +321,10 @@ var Score = (function() {
         y += fontSizeText + fontSizeNumber * 0.2;
         ctx.fillStyle = color(HUE_BASE - (player.getHue() - HUE_BASE), 1);
         ctx.font = fontSizeNumber + 'px ' + FONT_NUMBER;
-        ctx.fillText(Math.floor(10 * player.getAvgSpeed()), 20, y);
+        ctx.fillText(player.getScoreMultiplier() + 'x', 20, y);
         y += fontSizeNumber * 0.9;
         ctx.font = fontSizeText + 'px ' + FONT_TEXT;
-        ctx.fillText('avg', 20, y);
+        ctx.fillText('multiplier', 20, y);
 
         ctx.textAlign = 'right';
         ctx.textBaseline = 'top';
@@ -435,6 +435,8 @@ var Player = (function() {
     var deccel = 0.0004;
     var turnRate = Math.PI/36;
     var frictionMax = 200;
+    var scoringRadius = 100;
+    var scoreMultiplier = 1;
     var recovery = 15;
     var width, height, x, y, bearing, turning, history, historyMin, historyMax, size, hue, speed, speedAvg, friction, obstructed;
     var init = function(w, h) {
@@ -455,7 +457,7 @@ var Player = (function() {
         obstructed = false;
         return this;
     };
-    var update = function(keys, top) {
+    var update = function(keys, top, scrollSpeed) {
         // TURN
         if (keys[KEY_LEFT] && !obstructed && turning !== RIGHT) {
             turning = LEFT;
@@ -504,6 +506,10 @@ var Player = (function() {
         });
         historyMax += 1;
         
+        // SCORING
+        scoringRadius = 10 + speed *10 + scrollSpeed * 10;
+        scoreMultiplier = Math.min(10,Math.max(1, Math.floor(speed)));
+        
         // DIE
         if (obstructed || x < 0 || y < top || x > width || y > height + top) {
             return false;
@@ -540,6 +546,14 @@ var Player = (function() {
             x0 = h.x;
             y0 = h.y;
         }
+        /*
+        ctx.beginPath();
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5,15]);
+        ctx.strokeStyle = color(40, 0.5);
+        ctx.arc(x0,y0,scoringRadius,0,2*Math.PI);
+        ctx.stroke();
+        */
     };
     return {
         init: init,
@@ -552,7 +566,9 @@ var Player = (function() {
         getY: function() { return y; },
         getBearing: function() { return bearing; },
         getSpeed: function() { return speed; },
-        getAvgSpeed: function() { return speedAvg; }
+        getAvgSpeed: function() { return speedAvg; },
+        getScoringRadius: function() { return scoringRadius; },
+        getScoreMultiplier: function() { return scoreMultiplier; }
     };
 })();
 var Level = (function() {
@@ -566,7 +582,6 @@ var Level = (function() {
         var radiusMax = 100;
         var radiusMaxCommon = 81;
         var radiusRareChance = 0.10;
-        var slalomDist = 100;
         var obstacleRate;
         var init = function(p, s, w, h) {
             player = p;
@@ -601,7 +616,7 @@ var Level = (function() {
                 var o = obstacles[i];
                 var dx = x - o.x;
                 var dy = y - o.y;
-                var rs = o.r + slalomDist;
+                var rs = o.r + player.getScoringRadius();
                 var sumSq = dx*dx + dy*dy;
                 if (sumSq < o.r*o.r) { // hit obstacle
                     player.setObstructed(true);
@@ -615,10 +630,12 @@ var Level = (function() {
                     var diff = (b - a + 2*Math.PI) % (2*Math.PI);
                     if (Math.PI/4 < diff && diff < 3*Math.PI/4) {
                         o.slalom = LEFT;
-                        score.addPoints(o.r);
                     } else if (5*Math.PI/4 < diff && diff < 7*Math.PI/4) {
                         o.slalom = RIGHT;
-                        score.addPoints(o.r);
+                    }
+                    if (o.slalom) {
+                        o.score = Math.floor(o.r/10 * player.getScoreMultiplier());
+                        score.addPoints(o.score);
                     }
                 }
             }
@@ -656,7 +673,7 @@ var Level = (function() {
                     ctx.font = Math.floor(o.r*0.8) + 'px ' + FONT_NUMBER;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(o.r, o.x, o.y);
+                    ctx.fillText(o.score, o.x, o.y);
                 }
             }
         };
